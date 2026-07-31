@@ -1,4 +1,4 @@
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+﻿use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use serde::Serialize;
 use std::sync::Mutex;
 use chrono::DateTime;
@@ -89,7 +89,7 @@ async fn get_status(data: web::Data<AppState>) -> impl Responder {
         market_cap,
         liquidity,
         price,
-        liquidity_usd: format!("${:,.0}", liquidity),
+        liquidity_usd: format!("${:.0}", liquidity),
         contracts: 3,
         latest_block: BlockResponse {
             number: block_height,
@@ -129,7 +129,7 @@ async fn get_status(data: web::Data<AppState>) -> impl Responder {
 
 #[get("/")]
 async fn index() -> impl Responder {
-    HttpResponse::Ok().body("🚀 Munthazar Protocol v2.0 - Node Active")
+    HttpResponse::Ok().body("ðŸš€ Munthazar Protocol v2.0 - Node Active")
 }
 
 #[actix_web::main]
@@ -144,7 +144,7 @@ async fn main() -> std::io::Result<()> {
         price: Mutex::new(3.8088),
     });
 
-    println!("🚀 Starting Munthazar Protocol Server on port 8080...");
+    println!("ðŸš€ Starting Munthazar Protocol Server on port 8080...");
 
     HttpServer::new(move || {
         App::new()
