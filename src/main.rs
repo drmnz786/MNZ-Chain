@@ -1,10 +1,10 @@
-use actix_web::{web, App, HttpServer, HttpResponse, Responder};
+﻿use actix_web::{web, App, HttpServer, HttpResponse, Responder};
 
 async fn dashboard() -> impl Responder {
     let html = r#"<!DOCTYPE html>
 <html>
 <head>
-    <title>?? MNZ Blockchain Explorer - Production</title>
+    <title>⚛️ MNZ Blockchain Explorer - Production</title>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; padding: 20px; }
@@ -40,18 +40,18 @@ async fn dashboard() -> impl Responder {
 </head>
 <body>
     <div class="header">
-        <h1>?? MNZ <span>Blockchain</span> Explorer - Production</h1>
+        <h1>⚛️ MNZ <span>Blockchain</span> Explorer - Production</h1>
         <div class="status-bar">
-            <div><span class="dot"></span> <span id="statusText">Live</span> � Block #<span id="blockHeightDisplay">0</span></div>
-            <div>?? Firewall: ACTIVE</div>
-            <div>?? <span id="walletCountDisplay">0</span> Wallets</div>
-            <button class="btn" onclick="fetchData()">?? Refresh</button>
-            <button class="btn" onclick="toggleAuth()">?? Login</button>
+            <div><span class="dot"></span> <span id="statusText">Live</span> • Block #<span id="blockHeightDisplay">0</span></div>
+            <div>🔥 Firewall: ACTIVE</div>
+            <div>🔗 <span id="walletCountDisplay">0</span> Wallets</div>
+            <button class="btn" onclick="fetchData()">🔄 Refresh</button>
+            <button class="btn" onclick="toggleAuth()">🔐 Login</button>
         </div>
     </div>
 
     <div id="authForm" class="admin-form" style="display:none;">
-        <h3>?? User Login</h3>
+        <h3>🔐 User Login</h3>
         <input type="text" id="username" placeholder="Username" />
         <input type="password" id="password" placeholder="Password" />
         <button onclick="login()">Login</button>
@@ -61,7 +61,7 @@ async fn dashboard() -> impl Responder {
         <div class="stat"><div class="label">Block Height</div><div class="value blue" id="blockHeight">0</div></div>
         <div class="stat"><div class="label">Total Transactions</div><div class="value green" id="totalTransactions">0</div></div>
         <div class="stat"><div class="label">Wallets</div><div class="value green" id="wallets">0</div></div>
-        <div class="stat"><div class="label">O Constant</div><div class="value omega" id="omega">-0.00186667</div></div>
+        <div class="stat"><div class="label">Ω Constant</div><div class="value omega" id="omega">-0.00186667</div></div>
         <div class="stat"><div class="label">Peg (USD)</div><div class="value blue" id="peg">$4.0</div></div>
         <div class="stat"><div class="label">Contracts</div><div class="value purple" id="contracts">0</div></div>
         <div class="stat"><div class="label">Total Supply</div><div class="value green" id="totalSupply">0 MZQX</div></div>
@@ -69,33 +69,33 @@ async fn dashboard() -> impl Responder {
     </div>
 
     <div class="section">
-        <h2>?? Latest Block #<span id="latestBlockNumber">0</span></h2>
+        <h2>📦 Latest Block #<span id="latestBlockNumber">0</span></h2>
         <p style="font-family: monospace; color: #8892b0; font-size: 13px; line-height: 1.8;" id="latestBlockDetails">Loading...</p>
     </div>
 
     <div class="section">
-        <h2>?? Scan New Coin</h2>
+        <h2>🔍 Scan New Coin</h2>
         <div class="scan-input">
             <input type="text" id="coinAddress" placeholder="Enter BSC Contract Address (0x...)" />
-            <button onclick="scanCoin()">?? Scan</button>
+            <button onclick="scanCoin()">🔎 Scan</button>
         </div>
         <div id="scanResult"></div>
     </div>
 
     <div class="admin-panel" id="adminPanel" style="display:none;">
-        <h2>??? Admin Panel</h2>
+        <h2>🛡️ Admin Panel</h2>
         <table>
             <thead>
                 <tr><th>User</th><th>Role</th><th>Status</th><th>Action</th></tr>
             </thead>
             <tbody id="userTable">
-                <tr><td>Admin</td><td>Administrator</td><td>? Active</td><td><button class="btn">Manage</button></td></tr>
+                <tr><td>Admin</td><td>Administrator</td><td>✅ Active</td><td><button class="btn">Manage</button></td></tr>
             </tbody>
         </table>
     </div>
 
     <div class="footer">
-        <span class="dot"></span> MNZ Blockchain Live � O = -0.00186667 � 1 MZQX = 4 USD � Production v2.0
+        <span class="dot"></span> MNZ Blockchain Live • Ω = -0.00186667 • 1 MZQX = 4 USD • Production v2.0
     </div>
 
     <script>
@@ -151,33 +151,33 @@ async fn dashboard() -> impl Responder {
                 document.getElementById("adminPanel").style.display = "block";
                 document.getElementById("authForm").style.display = "none";
             } else {
-                alert("?? Please enter username and password.");
+                alert("⚠️ Please enter username and password.");
             }
         }
 
         async function scanCoin() {
             const address = document.getElementById("coinAddress").value.trim();
             if (!address || !address.startsWith("0x")) {
-                document.getElementById("scanResult").innerHTML = "?? Please enter a valid BSC contract address.";
+                document.getElementById("scanResult").innerHTML = "⚠️ Please enter a valid BSC contract address.";
                 return;
             }
-            document.getElementById("scanResult").innerHTML = "?? Scanning...";
+            document.getElementById("scanResult").innerHTML = "🔎 Scanning...";
 
             try {
                 const response = await fetch("https://api.bscscan.com/api?module=contract&action=getabi&address=" + address);
                 const data = await response.json();
                 if (data.status === "1") {
                     document.getElementById("scanResult").innerHTML = `
-                        ? Coin found!<br>
+                        ✅ Coin found!<br>
                         Address: ${address}<br>
                         Status: Verified<br>
                         ABI: Available
                     `;
                 } else {
-                    document.getElementById("scanResult").innerHTML = "? Coin not found or not verified.";
+                    document.getElementById("scanResult").innerHTML = "❌ Coin not found or not verified.";
                 }
             } catch (error) {
-                document.getElementById("scanResult").innerHTML = "? Error scanning coin.";
+                document.getElementById("scanResult").innerHTML = "❌ Error scanning coin.";
             }
         }
 
