@@ -1,0 +1,5 @@
+[providers]
+provider = "rust"
+
+[phases.setup]
+nixPkgs = ["rustc", "cargo"]
