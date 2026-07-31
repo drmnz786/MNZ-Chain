@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "mnz-chain-rust"
 version = "1.0.0"
 edition = "2021"
@@ -8,6 +8,7 @@ actix-web = "4.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = "0.4"
+[dependencies]
 rand = "=0.8.5"
 
 # Lock to compatible versions
