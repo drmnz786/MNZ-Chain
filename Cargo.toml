@@ -14,3 +14,4 @@ reqwest = { version = "0.11.27", features = ["json"] }
 chrono = { version = "0.4.38", features = ["serde"] }
 block-buffer = "=0.10.4"
 digest = "=0.10.7"
+time = "=0.3.36"
