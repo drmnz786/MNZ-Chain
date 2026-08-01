@@ -1,5 +1,2 @@
-[providers]
-provider = "rust"
-
-[phases.setup]
-nixPkgs = ["rustc", "cargo"]
+﻿[phases.setup]
+nixPkgs = ["pkg-config", "openssl", "openssl.dev"]
