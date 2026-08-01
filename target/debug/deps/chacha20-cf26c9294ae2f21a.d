@@ -1,0 +1,12 @@
+D:\mnz-chain-rust\target\debug\deps\chacha20-cf26c9294ae2f21a.d: C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\lib.rs C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\variants.rs C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\backends.rs C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\rng.rs C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\../README.md C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\backends\soft.rs C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\backends\avx2.rs C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\backends\sse2.rs
+
+D:\mnz-chain-rust\target\debug\deps\libchacha20-cf26c9294ae2f21a.rmeta: C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\lib.rs C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\variants.rs C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\backends.rs C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\rng.rs C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\../README.md C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\backends\soft.rs C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\backends\avx2.rs C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\backends\sse2.rs
+
+C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\lib.rs:
+C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\variants.rs:
+C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\backends.rs:
+C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\rng.rs:
+C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\../README.md:
+C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\backends\soft.rs:
+C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\backends\avx2.rs:
+C:\Users\mnzas\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\chacha20-0.10.1\src\backends\sse2.rs:
