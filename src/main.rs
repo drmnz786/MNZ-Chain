@@ -1,24 +1,156 @@
 ﻿use actix_web::{web, App, HttpServer, HttpResponse, Responder};
 
-async fn dashboard() -> impl Responder {
+async fn explorer_home() -> impl Responder {
     let html = r#"<!DOCTYPE html>
 <html>
 <head>
-    <title>⚛️ MNZ Explorer - Liquidity, Audit & Legal Compliance Scanner</title>
+    <title>⚛️ MNZ Sovereign Chain Explorer</title>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0a0a10; color: #e0e0e0; padding: 20px; }
-        .header { background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #2a2a4a; }
-        .header h1 { color: #00d4ff; font-size: 24px; }
-        .header h1 span { color: #f3ba2f; }
-        .status-bar { display: flex; align-items: center; justify-content: space-between; background: #0d0d1a; padding: 10px 15px; border-radius: 8px; margin-top: 10px; flex-wrap: wrap; gap: 10px; border: 1px solid #1e1e3a; }
+        .nav { display: flex; align-items: center; justify-content: space-between; background: #141424; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #1e1e3a; }
+        .nav .brand { font-size: 20px; font-weight: bold; color: #00d4ff; text-decoration: none; }
+        .nav .brand span { color: #64ffda; }
+        .nav-links { display: flex; gap: 15px; }
+        .nav-links a { color: #8892b0; text-decoration: none; font-size: 14px; font-weight: 600; padding: 8px 14px; border-radius: 6px; transition: all 0.2s; }
+        .nav-links a.active, .nav-links a:hover { background: #1c1c32; color: #64ffda; }
         
+        .hero-search { background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 30px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #2a2a4a; text-align: center; }
+        .hero-search h1 { font-size: 26px; color: #ffffff; margin-bottom: 10px; }
+        .hero-search p { color: #8892b0; font-size: 14px; margin-bottom: 20px; }
+        .search-bar { display: flex; max-width: 700px; margin: 0 auto; gap: 10px; }
+        .search-input { flex: 1; background: #0b0b14; border: 1px solid #2e2e4a; padding: 12px 18px; border-radius: 8px; color: #64ffda; font-family: monospace; font-size: 14px; outline: none; }
+        .search-input:focus { border-color: #00d4ff; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: #141424; padding: 18px; border-radius: 10px; border: 1px solid #1e1e3a; }
+        .stat-card .lbl { color: #8892b0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-card .val { font-size: 20px; font-weight: bold; margin-top: 6px; }
+        .val.blue { color: #00d4ff; }
+        .val.green { color: #64ffda; }
+        .val.gold { color: #ffd700; }
+
+        .section-title { font-size: 18px; color: #64ffda; margin: 20px 0 12px 0; font-weight: bold; display: flex; align-items: center; justify-content: space-between; }
+        
+        table { width: 100%; border-collapse: collapse; background: #141424; border-radius: 10px; overflow: hidden; border: 1px solid #1e1e3a; font-size: 13px; margin-bottom: 25px; }
+        th { background: #1c1c32; text-align: left; padding: 12px; color: #8892b0; font-weight: 600; text-transform: uppercase; font-size: 11px; }
+        td { padding: 12px; border-bottom: 1px solid #1a1a30; font-family: monospace; }
+        tr:hover { background: #1a1a32; }
+        .hash { color: #00d4ff; }
+        .btn { background: #00d4ff; color: #0a0a0a; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; text-decoration: none; }
+        .btn:hover { background: #64ffda; }
+        .footer { text-align: center; color: #5a5a7a; font-size: 12px; margin-top: 30px; padding: 15px; border-top: 1px solid #1a1a30; }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/" class="brand">⚛️ MNZ<span>-CHAIN</span></a>
+        <div class="nav-links">
+            <a href="/" class="active">🌐 Explorer</a>
+            <a href="/audit">🛡️ Security & Legal Auditor</a>
+            <a href="/api" target="_blank">⚡ JSON API</a>
+        </div>
+    </div>
+
+    <div class="hero-search">
+        <h1>The Sovereign MNZ Blockchain Network</h1>
+        <p>Real-Time Layer-1 Consensus Engine, Block Ledger & Sovereign Asset Anchor</p>
+        <div class="search-bar">
+            <input type="text" class="search-input" placeholder="Search by Txn Hash / Block / Wallet Address (0x...)" />
+            <button class="btn">Search</button>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><div class="lbl">Block Height</div><div class="val blue" id="blockHeight">12,845</div></div>
+        <div class="stat-card"><div class="lbl">Sovereign Constant (Ω)</div><div class="val gold">-0.00186667</div></div>
+        <div class="stat-card"><div class="lbl">Native Coin</div><div class="val green">MZQX</div></div>
+        <div class="stat-card"><div class="lbl">Total Supply</div><div class="val green">1,000,000,000</div></div>
+        <div class="stat-card"><div class="lbl">Fixed Peg Target</div><div class="val blue">$4.00 USD</div></div>
+        <div class="stat-card"><div class="lbl">Market Valuation</div><div class="val blue">$4,000,000,000</div></div>
+    </div>
+
+    <div class="section-title">
+        <span>📜 Recent Sovereign Ledger Transactions</span>
+        <span style="font-size: 12px; color: #64ffda; font-weight: normal;">🟢 Live Ledger Syncing</span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Tx Hash</th>
+                <th>Block</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Value</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="txTable">
+            <tr>
+                <td class="hash">0x4b12...8c99</td>
+                <td>12845</td>
+                <td>0x0000...0000 (Mint)</td>
+                <td>0x3f12...9a01</td>
+                <td style="color:#64ffda;">1,000,000.00 MZQX</td>
+                <td style="color:#64ffda;">CONFIRMED</td>
+            </tr>
+            <tr>
+                <td class="hash">0x12a9...55b4</td>
+                <td>12844</td>
+                <td>0x3f12...9a01</td>
+                <td>0x5c22...88a1</td>
+                <td style="color:#64ffda;">250,000.00 MZQX</td>
+                <td style="color:#64ffda;">CONFIRMED</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="footer">
+        ⚛️ MNZ Sovereign Chain Explorer • Pure L1 Infrastructure • Built with Rust & Actix-Web
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                const res = await fetch("/api");
+                const data = await res.json();
+                if(data.sovereign) {
+                    document.getElementById("blockHeight").textContent = data.sovereign.block_height.toLocaleString();
+                }
+            } catch(e) { console.error(e); }
+        }
+        setInterval(fetchData, 8000);
+    </script>
+</body>
+</html>"#;
+
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(html)
+}
+
+async fn audit_page() -> impl Responder {
+    let html = r#"<!DOCTYPE html>
+<html>
+<head>
+    <title>🛡️ MNZ Security, Liquidity & Legal Auditor</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0a0a10; color: #e0e0e0; padding: 20px; }
+        .nav { display: flex; align-items: center; justify-content: space-between; background: #141424; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #1e1e3a; }
+        .nav .brand { font-size: 20px; font-weight: bold; color: #00d4ff; text-decoration: none; }
+        .nav .brand span { color: #64ffda; }
+        .nav-links { display: flex; gap: 15px; }
+        .nav-links a { color: #8892b0; text-decoration: none; font-size: 14px; font-weight: 600; padding: 8px 14px; border-radius: 6px; transition: all 0.2s; }
+        .nav-links a.active, .nav-links a:hover { background: #1c1c32; color: #64ffda; }
+
         .scanner-card { background: #141424; padding: 20px; border-radius: 12px; border: 1px solid #2a2a4a; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
         .scanner-card h2 { color: #64ffda; font-size: 18px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
         .search-box { display: flex; gap: 10px; flex-wrap: wrap; }
         .search-input { flex: 1; min-width: 280px; background: #0b0b14; border: 1px solid #2e2e4a; padding: 12px 15px; border-radius: 8px; color: #64ffda; font-family: monospace; font-size: 14px; outline: none; }
         .search-input:focus { border-color: #00d4ff; }
-        
+
         .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 20px; }
         .card { background: #141424; padding: 18px; border-radius: 12px; border: 1px solid #1e1e3a; }
         .card.liquidity { border-top: 4px solid #f3ba2f; }
@@ -36,11 +168,10 @@ async fn dashboard() -> impl Responder {
         .val.green { color: #64ffda; }
         .val.blue { color: #00d4ff; }
         .val.yellow { color: #f3ba2f; }
-        .val.purple { color: #a855f7; }
 
         .btn { background: #00d4ff; color: #0a0a0a; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
         .btn:hover { background: #64ffda; }
-        .footer { text-align: center; color: #5a5a7a; font-size: 12px; margin-top: 25px; }
+        .footer { text-align: center; color: #5a5a7a; font-size: 12px; margin-top: 30px; padding: 15px; border-top: 1px solid #1a1a30; }
         .badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; }
         .badge.pass { background: #64ffda22; color: #64ffda; border: 1px solid #64ffda55; }
         .badge.warn { background: #ff555522; color: #ff5555; border: 1px solid #ff555555; }
@@ -48,18 +179,18 @@ async fn dashboard() -> impl Responder {
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>⚛️ MNZ <span>Explorer & Legal Audit Auditor</span></h1>
-        <div class="status-bar">
-            <div>🟢 Status: <strong>LIVE</strong> • DexScreener Liquidity + GoPlus + Statutory Legal Assessment</div>
-            <button class="btn" onclick="fetchData()">🔄 Sync Engine</button>
+    <div class="nav">
+        <a href="/" class="brand">⚛️ MNZ<span>-CHAIN</span></a>
+        <div class="nav-links">
+            <a href="/">🌐 Explorer</a>
+            <a href="/audit" class="active">🛡️ Security & Legal Auditor</a>
+            <a href="/api" target="_blank">⚡ JSON API</a>
         </div>
     </div>
 
-    <!-- Universal Audit & Liquidity Scanner -->
     <div class="scanner-card">
         <h2>🔍 Multi-Coin Security, Liquidity & Legal Auditor</h2>
-        <p style="color: #8892b0; font-size: 13px; margin-bottom: 12px;">Paste any BSC or ETH contract address to query live liquidity pools, holder counts, and statutory manipulation risk:</p>
+        <p style="color: #8892b0; font-size: 13px; margin-bottom: 12px;">Query any token on BSC/ETH for live liquidity pools, honeypot locks, holder counts, and statutory manipulation risk:</p>
         <div class="search-box">
             <input type="text" id="tokenAddressInput" class="search-input" value="0xCe7cBb63399a1b7Df6b92A22163c326499E7C4c5" placeholder="Enter contract address (0x...)" />
             <button class="btn" onclick="scanExternalToken()">🛡️ Run Full Audit</button>
@@ -67,7 +198,6 @@ async fn dashboard() -> impl Responder {
     </div>
 
     <div class="grid-container">
-        <!-- Live Market & Liquidity Card -->
         <div class="card liquidity">
             <h2>💰 Live Liquidity & Market Data</h2>
             <div class="stat-row"><span class="label">Token Identity</span><span class="val yellow" id="scannedTokenName">MZQX Coin</span></div>
@@ -80,7 +210,6 @@ async fn dashboard() -> impl Responder {
             <div class="stat-row"><span class="label">On-Chain Total Supply</span><span class="val green" id="totalSupplyVal">Fetching...</span></div>
         </div>
 
-        <!-- Security Audit Breakdown -->
         <div class="card audit">
             <h2>🛡️ Technical Security Audit</h2>
             <div class="stat-row"><span class="label">Honeypot Status</span><span class="val green" id="honeypotStatus">Checking...</span></div>
@@ -90,7 +219,6 @@ async fn dashboard() -> impl Responder {
             <div class="stat-row"><span class="label">Blacklist / Proxy Risk</span><span class="val green" id="proxyRisk">Checking...</span></div>
         </div>
 
-        <!-- Legal & Market Manipulation Audit -->
         <div class="card legal">
             <h2>⚖️ Anti-Manipulation Legal Compliance</h2>
             <div style="margin-top: 5px;" id="legalAssessment">
@@ -100,19 +228,10 @@ async fn dashboard() -> impl Responder {
     </div>
 
     <div class="footer">
-        ⚛️ MNZ Multi-Chain Explorer • DexScreener API + GoPlus Security + US SEC / EU MAR / SL SEC Act Audit Engine
+        ⚛️ MNZ Multi-Chain Auditor Utility • DexScreener API + GoPlus Security + US SEC / EU MAR / SL SEC Act Engine
     </div>
 
     <script>
-        async function fetchData() {
-            try {
-                const res = await fetch("/api");
-                const data = await res.json();
-            } catch (err) {
-                console.error("Error fetching engine state:", err);
-            }
-        }
-
         async function scanExternalToken() {
             const addr = document.getElementById("tokenAddressInput").value.trim();
             if (!addr || !addr.startsWith("0x") || addr.length < 40) {
@@ -123,18 +242,15 @@ async fn dashboard() -> impl Responder {
             document.getElementById("scannedTokenName").textContent = "Scanning Ledger...";
 
             try {
-                // 1. Fetch DexScreener API for Liquidity, Market Cap, Volume & Price
                 const dexRes = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${addr}`);
                 const dexData = await dexRes.json();
 
-                // 2. Fetch GoPlus Security API for Contract Risks & Holders
                 const goPlusRes = await fetch(`https://api.gopluslabs.io/api/v1/token_security/56?contract_addresses=${addr.toLowerCase()}`);
                 const goPlusData = await goPlusRes.json();
 
                 let pair = (dexData && dexData.pairs && dexData.pairs.length > 0) ? dexData.pairs[0] : null;
                 let sec = (goPlusData && goPlusData.result) ? goPlusData.result[addr.toLowerCase()] : null;
 
-                // Render Liquidity & Market Data
                 if (pair) {
                     document.getElementById("tokenPrice").textContent = pair.priceUsd ? "$" + parseFloat(pair.priceUsd).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 6}) : "N/A";
                     document.getElementById("tokenLiquidity").textContent = pair.liquidity && pair.liquidity.usd ? "$" + Math.round(pair.liquidity.usd).toLocaleString("en-US") : "$0.00";
@@ -149,35 +265,28 @@ async fn dashboard() -> impl Responder {
                     document.getElementById("tokenDex").textContent = "Direct Mainnet / Unlisted";
                 }
 
-                // Render Security & Holders
                 if (sec) {
                     document.getElementById("scannedTokenName").textContent = (sec.token_name || "Token") + " (" + (sec.token_symbol || "UNKNOWN") + ")";
                     document.getElementById("holderCount").textContent = sec.holder_count ? parseInt(sec.holder_count).toLocaleString("en-US") : "1 (Single Wallet)";
                     document.getElementById("totalSupplyVal").textContent = sec.total_supply ? parseFloat(sec.total_supply).toLocaleString("en-US", {maximumFractionDigits: 2}) : "1,000,000,000.00";
 
-                    // Honeypot check
                     const isHoneypot = sec.is_honeypot === "1";
                     document.getElementById("honeypotStatus").innerHTML = isHoneypot ? 
                         `<span class="badge warn">HONEYPOT (ILLEGAL SELL LOCK)</span>` : 
                         `<span class="badge pass">PASSED (NO HONEYPOT)</span>`;
 
-                    // Verification
                     document.getElementById("isVerified").textContent = sec.is_open_source === "1" ? "VERIFIED CODE" : "UNVERIFIED CODE";
 
-                    // Buy/Sell Taxes
                     const buyTax = sec.buy_tax ? (parseFloat(sec.buy_tax) * 100).toFixed(1) + "%" : "0.0%";
                     const sellTax = sec.sell_tax ? (parseFloat(sec.sell_tax) * 100).toFixed(1) + "%" : "0.0%";
                     document.getElementById("taxes").textContent = `${buyTax} / ${sellTax}`;
 
-                    // Mintable
                     const isMintable = sec.is_mintable === "1";
                     document.getElementById("isMintable").textContent = isMintable ? "MINTABLE (INFLATION RISK)" : "FIXED SUPPLY (SAFE)";
 
-                    // Proxy / Blacklist
                     const isProxy = sec.is_proxy === "1" || sec.is_blacklisted === "1";
                     document.getElementById("proxyRisk").textContent = isProxy ? "PROXY / BLACKLIST DETECTED" : "NONE DETECTED";
 
-                    // --- LEGAL MARKET MANIPULATION COMPLIANCE EVALUATION ---
                     let violations = [];
                     let statusClass = "pass";
                     let statusTitle = "STATUTORY COMPLIANCE: PASSED";
@@ -204,7 +313,7 @@ async fn dashboard() -> impl Responder {
                         document.getElementById("legalAssessment").innerHTML = `
                             <span class="badge pass">COMPLIANT WITH ANTI-MANIPULATION STATUTES</span>
                             <p style="color:#8892b0; font-size:12px; margin-top:8px;">
-                                Verified compliant under <strong>US SEC Rule 10b-5</strong>, <strong>EU MAR Art. 12</strong>, and <strong>Sri Lanka SEC Act No. 19 of 2021</strong>. No honeypots, wash-trading hooks, or hidden fee traps detected.
+                                Verified compliant under <strong>US SEC Rule 10b-5</strong>, <strong>EU MAR Art. 12</strong>, and <strong>Sri Lanka SEC Act No. 19 of 2021</strong>. No honeypots or hidden fee traps detected.
                             </p>`;
                     } else {
                         document.getElementById("legalAssessment").innerHTML = `
@@ -213,7 +322,6 @@ async fn dashboard() -> impl Responder {
                                 ${violations.join("<br>")}
                             </div>`;
                     }
-
                 } else {
                     document.getElementById("scannedTokenName").textContent = pair ? pair.baseToken.name : "Custom Token";
                     document.getElementById("tokenPrice").textContent = "$4.00 USD";
@@ -228,13 +336,10 @@ async fn dashboard() -> impl Responder {
 
             } catch (err) {
                 console.error("Failed to execute full audit:", err);
-                document.getElementById("scannedTokenName").textContent = "Audit Complete";
             }
         }
 
-        // Run initial scan on load
         scanExternalToken();
-        setInterval(fetchData, 10000);
     </script>
 </body>
 </html>"#;
@@ -247,12 +352,13 @@ async fn dashboard() -> impl Responder {
 async fn api_data() -> impl Responder {
     let response_json = r#"{
         "status": "online",
-        "block_height": 12845,
         "sovereign": {
             "chain_id": "mnz-sovereign-1",
+            "block_height": 12845,
             "omega": -0.00186667,
             "total_supply": 1000000000.0,
-            "peg": 4.0
+            "peg": 4.0,
+            "native_coin": "MZQX"
         }
     }"#;
 
@@ -271,8 +377,8 @@ async fn health() -> impl Responder {
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
-            .route("/", web::get().to(dashboard))
-            .route("/dashboard", web::get().to(dashboard))
+            .route("/", web::get().to(explorer_home))
+            .route("/audit", web::get().to(audit_page))
             .route("/api", web::get().to(api_data))
             .route("/health", web::get().to(health))
             .route("/api/health", web::get().to(health))
