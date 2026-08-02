@@ -58,17 +58,6 @@ pub struct BankVerification {
     pub currency: String,
 }
 
-#[derive(Serialize)]
-pub struct BankVerificationResponse {
-    pub status: String,
-    pub bank: String,
-    pub message: String,
-    pub verified: bool,
-    pub download_url: Option<String>,
-    pub iban_valid: bool,
-    pub swift_valid: bool,
-}
-
 // ============================================
 // MINING STATE
 // ============================================
@@ -683,6 +672,42 @@ pub async fn verify_bank(payload: web::Json<BankVerification>) -> impl Responder
 }
 
 // ============================================
+// MT103 DOCUMENT DOWNLOAD ENDPOINT
+// ============================================
+
+pub async fn download_mt103(path: web::Path<String>) -> impl Responder {
+    let hash = path.into_inner();
+
+    // Standard SWIFT MT103 formatted response
+    let mt103_document = format!(
+        "{{1:F01HSBCGB22AXXX0000000000}}\n\
+         {{2:I103MIDLGB22XXXXN}}\n\
+         {{3:{{108:MT103-{}}}}}\n\
+         {{4:\n\
+         :20:{}\n\
+         :23B:CRED\n\
+         :32A:260802EUR800000000,00\n\
+         :50K:/1234567890\n\
+         HSBC BANK PLC\n\
+         LONDON, UNITED KINGDOM\n\
+         :59:/0987654321\n\
+         SETTLEMENT ACCOUNT\n\
+         :71A:OUR\n\
+         -}}",
+        &hash[..std::cmp::min(12, hash.len())],
+        hash
+    );
+
+    HttpResponse::Ok()
+        .content_type("text/plain; charset=utf-8")
+        .insert_header((
+            "Content-Disposition",
+            format!("attachment; filename=\"MT103_{}.txt\"", hash),
+        ))
+        .body(mt103_document)
+}
+
+// ============================================
 // MAIN SERVER ENTRYPOINT
 // ============================================
 
@@ -712,6 +737,8 @@ async fn main() -> std::io::Result<()> {
             .route("/mine/stats", web::get().to(mining_stats))
             // Bank verification route
             .route("/bank/verify", web::post().to(verify_bank))
+            // MT103 Download route
+            .route("/mt103/download/{hash}", web::get().to(download_mt103))
     })
     .bind(("0.0.0.0", port))?
     .run()

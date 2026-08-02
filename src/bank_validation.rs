@@ -1,4 +1,4 @@
-/// Full Bank Validation Module — ISO 7064 Modulo 97-10 + SPP/FTP/MT103 Support
+﻿/// Full Bank Validation Module — ISO 7064 Modulo 97-10 + SPP/FTP/MT103 Support
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -60,7 +60,6 @@ pub fn validate_swift(swift: &str) -> bool {
     if clean.len() != 8 && clean.len() != 11 {
         return false;
     }
-    // SWIFT/BIC codes can contain alphanumeric characters (e.g. MIDLGB22)
     clean.chars().all(|c| c.is_ascii_alphanumeric())
 }
 
