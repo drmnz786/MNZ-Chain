@@ -1,8 +1,8 @@
-﻿use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use chrono::Utc;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+
 use std::sync::Mutex;
 
 mod bank_validation;
@@ -120,7 +120,7 @@ async fn explorer_home() -> impl Responder {
     let html = r#"<!DOCTYPE html>
 <html>
 <head>
-    <title>⚛️ MNZ Sovereign Chain Explorer</title>
+    <title>?? MNZ Sovereign Chain Explorer</title>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0a0a10; color: #e0e0e0; padding: 20px; }
@@ -145,11 +145,11 @@ async fn explorer_home() -> impl Responder {
 </head>
 <body>
     <div class="nav">
-        <a href="/" class="brand">⚛️ MNZ<span>-CHAIN</span></a>
+        <a href="/" class="brand">?? MNZ<span>-CHAIN</span></a>
         <div class="nav-links">
-            <a href="/" class="active">🌐 Sovereign Explorer</a>
-            <a href="/audit">🛡️ Security & Legal Auditor</a>
-            <a href="/api" target="_blank">⚡ JSON API</a>
+            <a href="/" class="active">?? Sovereign Explorer</a>
+            <a href="/audit">??? Security & Legal Auditor</a>
+            <a href="/api" target="_blank">? JSON API</a>
         </div>
     </div>
 
@@ -161,12 +161,12 @@ async fn explorer_home() -> impl Responder {
     <div class="stats-grid">
         <div class="stat-card"><div class="lbl">Network Status</div><div class="val green">ACTIVE MAINNET</div></div>
         <div class="stat-card"><div class="lbl">Block Height</div><div class="val blue">12,845</div></div>
-        <div class="stat-card"><div class="lbl">Sovereign Constant (Ω)</div><div class="val gold">-0.00186667</div></div>
+        <div class="stat-card"><div class="lbl">Sovereign Constant (O)</div><div class="val gold">-0.00186667</div></div>
         <div class="stat-card"><div class="lbl">Native Gas Asset</div><div class="val green">MZQX</div></div>
     </div>
 
     <div class="footer">
-        ⚛️ MNZ Sovereign Network Infrastructure • Built with Rust & Actix-Web
+        ?? MNZ Sovereign Network Infrastructure � Built with Rust & Actix-Web
     </div>
 </body>
 </html>"#;
@@ -179,7 +179,7 @@ async fn explorer_home() -> impl Responder {
 async fn audit_page() -> impl Responder {
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
-        .body("<h1>🛡️ Audit Page</h1>")
+        .body("<h1>??? Audit Page</h1>")
 }
 
 async fn api_data() -> impl Responder {
@@ -372,7 +372,7 @@ async fn main() -> std::io::Result<()> {
         .parse::<u16>()
         .unwrap_or(8080);
 
-    println!("🚀 Server launching on port {}", port);
+    println!("?? Server launching on port {}", port);
 
     HttpServer::new(move || {
         App::new()
