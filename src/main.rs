@@ -847,11 +847,12 @@ pub async fn verify_bank(payload: web::Json<BankVerification>) -> impl Responder
     };
 
     // Generate MT103 download URL if verified
-    let download_url = if verified {
-        Some(generate_mt103_download_url(&format!("MT103-{}", chrono::Utc::now().timestamp()), &clean_swift))
-    } else {
-        None
-    };
+let download_url = if verified {
+    Some(generate_mt103_download_url(...))
+} else {
+    None
+};
+let download_url_display = download_url.clone().unwrap_or("N/A".to_string());
 
     let message = if verified {
         format!(
