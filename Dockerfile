@@ -1,4 +1,4 @@
-FROM rust:1.88-slim AS builder
+﻿FROM rust:1.88-slim AS builder
 WORKDIR /app
 
 # Install build dependencies required for compiling openssl-sys
@@ -10,6 +10,8 @@ RUN cargo build --release
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y libssl-dev ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY --from=builder /app/target/release/mnz-chain-rust /app/mnz-chain-rust
+COPY --from=builder /app/target/release/mnz_chain /app/mnz_chain
 EXPOSE 8080
-CMD ["./mnz-chain-rust"]
+CMD ["./mnz_chain"]
+
+
