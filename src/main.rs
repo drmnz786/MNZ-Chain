@@ -1,9 +1,7 @@
 ﻿use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use chrono::Utc;
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
 use std::sync::Mutex;
 
 mod bank_validation;
@@ -49,7 +47,7 @@ pub struct RegisterMiner {
 }
 
 // ============================================
-// BANK VERIFICATION STRUCTURES & DATABASE
+// BANK VERIFICATION STRUCTURES
 // ============================================
 
 #[derive(Deserialize)]
@@ -69,197 +67,6 @@ pub struct BankVerificationResponse {
     pub download_url: Option<String>,
     pub iban_valid: bool,
     pub swift_valid: bool,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct BankRecord {
-    pub name: String,
-    pub country: String,
-    pub swift_codes: Vec<String>,
-    pub iban_prefixes: Vec<String>,
-    pub jurisdiction: String,
-}
-
-lazy_static! {
-    static ref GLOBAL_BANKS: HashMap<String, BankRecord> = {
-        let mut m = HashMap::new();
-        
-        // EUROPE
-        m.insert("UBS".to_string(), BankRecord {
-            name: "UBS AG".to_string(),
-            country: "Switzerland".to_string(),
-            swift_codes: vec!["UBSWCHZH".to_string(), "UBSWCHZH80A".to_string(), "UBSWCHZH80B".to_string()],
-            iban_prefixes: vec!["CH".to_string()],
-            jurisdiction: "Switzerland".to_string(),
-        });
-        
-        m.insert("DEUTSCHE".to_string(), BankRecord {
-            name: "Deutsche Bank AG".to_string(),
-            country: "Germany".to_string(),
-            swift_codes: vec!["DEUTDEFF".to_string(), "DEUTDEFFXXX".to_string(), "DEUTDEFF500".to_string()],
-            iban_prefixes: vec!["DE".to_string()],
-            jurisdiction: "Germany".to_string(),
-        });
-        
-        m.insert("BARCLAYS".to_string(), BankRecord {
-            name: "Barclays Bank PLC".to_string(),
-            country: "United Kingdom".to_string(),
-            swift_codes: vec!["BARCGB22".to_string(), "BARCGB22XXX".to_string(), "BUKBGB22".to_string()],
-            iban_prefixes: vec!["GB".to_string()],
-            jurisdiction: "United Kingdom".to_string(),
-        });
-        
-        m.insert("HSBC".to_string(), BankRecord {
-            name: "HSBC Bank PLC".to_string(),
-            country: "United Kingdom".to_string(),
-            swift_codes: vec!["MIDLGB22".to_string(), "MIDLGB22XXX".to_string(), "HSBCGB22".to_string()],
-            iban_prefixes: vec!["GB".to_string()],
-            jurisdiction: "United Kingdom".to_string(),
-        });
-        
-        m.insert("JPMORGAN".to_string(), BankRecord {
-            name: "JPMorgan Chase Bank NA".to_string(),
-            country: "United States".to_string(),
-            swift_codes: vec!["CHASUS33".to_string(), "CHASUS33XXX".to_string(), "CHASUS33NYC".to_string()],
-            iban_prefixes: vec!["US".to_string()],
-            jurisdiction: "United States".to_string(),
-        });
-        
-        // ASIA
-        m.insert("UBS_SG".to_string(), BankRecord {
-            name: "UBS AG Singapore".to_string(),
-            country: "Singapore".to_string(),
-            swift_codes: vec!["UBSWSGSG".to_string(), "UBSWSGSGXXX".to_string()],
-            iban_prefixes: vec!["SG".to_string()],
-            jurisdiction: "Singapore".to_string(),
-        });
-        
-        m.insert("DEUTSCHE_HK".to_string(), BankRecord {
-            name: "Deutsche Bank Hong Kong".to_string(),
-            country: "Hong Kong".to_string(),
-            swift_codes: vec!["DEUTHKHH".to_string(), "DEUTHKHHXXX".to_string()],
-            iban_prefixes: vec!["HK".to_string()],
-            jurisdiction: "Hong Kong".to_string(),
-        });
-        
-        m.insert("HSBC_HK".to_string(), BankRecord {
-            name: "HSBC Hong Kong".to_string(),
-            country: "Hong Kong".to_string(),
-            swift_codes: vec!["HSBCHKHH".to_string(), "HSBCHKHHXXX".to_string()],
-            iban_prefixes: vec!["HK".to_string()],
-            jurisdiction: "Hong Kong".to_string(),
-        });
-        
-        // AFRICA & INDIAN OCEAN
-        m.insert("STANDARD_BANK".to_string(), BankRecord {
-            name: "Standard Bank".to_string(),
-            country: "South Africa".to_string(),
-            swift_codes: vec!["SBZAZAJJ".to_string(), "SBZAZAJJXXX".to_string()],
-            iban_prefixes: vec!["ZA".to_string()],
-            jurisdiction: "South Africa".to_string(),
-        });
-        
-        m.insert("FIRSTRAND".to_string(), BankRecord {
-            name: "FirstRand Bank".to_string(),
-            country: "South Africa".to_string(),
-            swift_codes: vec!["FIRNZAJJ".to_string(), "FIRNZAJJXXX".to_string()],
-            iban_prefixes: vec!["ZA".to_string()],
-            jurisdiction: "South Africa".to_string(),
-        });
-        
-        m.insert("MAURITIUS_COMMERCIAL".to_string(), BankRecord {
-            name: "Mauritius Commercial Bank".to_string(),
-            country: "Mauritius".to_string(),
-            swift_codes: vec!["MCBLMUMU".to_string(), "MCBLMUMUXXX".to_string()],
-            iban_prefixes: vec!["MU".to_string()],
-            jurisdiction: "Mauritius".to_string(),
-        });
-        
-        m.insert("SBM_MAURITIUS".to_string(), BankRecord {
-            name: "State Bank of Mauritius".to_string(),
-            country: "Mauritius".to_string(),
-            swift_codes: vec!["STCMMUMU".to_string(), "STCMMUMUXXX".to_string()],
-            iban_prefixes: vec!["MU".to_string()],
-            jurisdiction: "Mauritius".to_string(),
-        });
-        
-        // LATIN AMERICA
-        m.insert("BRADESCO".to_string(), BankRecord {
-            name: "Banco Bradesco".to_string(),
-            country: "Brazil".to_string(),
-            swift_codes: vec!["BBDEBRSPSP".to_string(), "BBDEBRSPSPXXX".to_string()],
-            iban_prefixes: vec!["BR".to_string()],
-            jurisdiction: "Brazil".to_string(),
-        });
-        
-        m.insert("ITAU".to_string(), BankRecord {
-            name: "Itaú Unibanco".to_string(),
-            country: "Brazil".to_string(),
-            swift_codes: vec!["ITAUBRSP".to_string(), "ITAUBRSPXXX".to_string()],
-            iban_prefixes: vec!["BR".to_string()],
-            jurisdiction: "Brazil".to_string(),
-        });
-        
-        // EUROPEAN SUBSIDIARIES & REGIONAL
-        m.insert("UBS_LUX".to_string(), BankRecord {
-            name: "UBS Luxembourg".to_string(),
-            country: "Luxembourg".to_string(),
-            swift_codes: vec!["UBSLLULL".to_string(), "UBSLLULLXXX".to_string()],
-            iban_prefixes: vec!["LU".to_string()],
-            jurisdiction: "Luxembourg".to_string(),
-        });
-        
-        m.insert("UBS_UK".to_string(), BankRecord {
-            name: "UBS London".to_string(),
-            country: "United Kingdom".to_string(),
-            swift_codes: vec!["UBSWGB22".to_string(), "UBSWGB22XXX".to_string()],
-            iban_prefixes: vec!["GB".to_string()],
-            jurisdiction: "United Kingdom".to_string(),
-        });
-        
-        m.insert("BCR_ROMANIA".to_string(), BankRecord {
-            name: "Banca Comercială Română".to_string(),
-            country: "Romania".to_string(),
-            swift_codes: vec!["RZBNROBU".to_string(), "RZBNROBUXXX".to_string()],
-            iban_prefixes: vec!["RO".to_string()],
-            jurisdiction: "Romania".to_string(),
-        });
-        
-        m.insert("BANCO_GENERAL".to_string(), BankRecord {
-            name: "Banco General".to_string(),
-            country: "Panama".to_string(),
-            swift_codes: vec!["BAGEPAPA".to_string(), "BAGEPAPAXXX".to_string()],
-            iban_prefixes: vec!["PA".to_string()],
-            jurisdiction: "Panama".to_string(),
-        });
-        
-        // SWISS PRIVATE BANKS
-        m.insert("PICTET".to_string(), BankRecord {
-            name: "Pictet & Cie".to_string(),
-            country: "Switzerland".to_string(),
-            swift_codes: vec!["PICTCHZZ".to_string(), "PICTCHZZXXX".to_string()],
-            iban_prefixes: vec!["CH".to_string()],
-            jurisdiction: "Switzerland".to_string(),
-        });
-        
-        m.insert("LOMBARD_ODIER".to_string(), BankRecord {
-            name: "Lombard Odier".to_string(),
-            country: "Switzerland".to_string(),
-            swift_codes: vec!["LOCHCHZZ".to_string(), "LOCHCHZZXXX".to_string()],
-            iban_prefixes: vec!["CH".to_string()],
-            jurisdiction: "Switzerland".to_string(),
-        });
-        
-        m.insert("JULIUS_BAER".to_string(), BankRecord {
-            name: "Julius Baer".to_string(),
-            country: "Switzerland".to_string(),
-            swift_codes: vec!["BAERCHZZ".to_string(), "BAERCHZZXXX".to_string()],
-            iban_prefixes: vec!["CH".to_string()],
-            jurisdiction: "Switzerland".to_string(),
-        });
-        
-        m
-    };
 }
 
 // ============================================
@@ -711,7 +518,7 @@ pub async fn get_work(data: web::Data<Mutex<MiningState>>) -> impl Responder {
         transactions: state.pending_transactions.clone(),
         timestamp: Utc::now().timestamp() as u64,
     };
-    
+
     HttpResponse::Ok().json(response)
 }
 
@@ -720,21 +527,21 @@ pub async fn submit_mined_block(
     data: web::Data<Mutex<MiningState>>,
 ) -> impl Responder {
     let mut state = data.lock().unwrap();
-    
+
     if payload.block_index != state.latest_block.index + 1 {
         return HttpResponse::BadRequest().json(serde_json::json!({
             "status": "rejected",
             "reason": "Invalid block index"
         }));
     }
-    
+
     if payload.previous_hash != state.latest_block.hash {
         return HttpResponse::BadRequest().json(serde_json::json!({
             "status": "rejected",
             "reason": "Previous hash mismatch"
         }));
     }
-    
+
     let diff: usize = state.difficulty as usize;
     let target = format!("0{}", "0".repeat(diff - 1));
     if !payload.block_hash.starts_with(&target) {
@@ -743,7 +550,7 @@ pub async fn submit_mined_block(
             "reason": "Hash does not meet difficulty target"
         }));
     }
-    
+
     let mut hasher = Sha256::new();
     let block_data = format!(
         "{}{}{}{}",
@@ -754,14 +561,14 @@ pub async fn submit_mined_block(
     );
     hasher.update(block_data.as_bytes());
     let computed_hash = hex::encode(hasher.finalize());
-    
+
     if computed_hash != payload.block_hash {
         return HttpResponse::BadRequest().json(serde_json::json!({
             "status": "rejected",
             "reason": "Hash mismatch"
         }));
     }
-    
+
     let new_block = Block {
         index: payload.block_index,
         timestamp: Utc::now().timestamp() as u64,
@@ -770,16 +577,16 @@ pub async fn submit_mined_block(
         nonce: payload.nonce,
         hash: payload.block_hash.clone(),
     };
-    
+
     let reward_tx = format!(
         "MINT: +100.00 MZQX to {} (Block {})",
         payload.miner_address,
         payload.block_index
     );
-    
+
     state.latest_block = new_block;
     state.pending_transactions.clear();
-    
+
     HttpResponse::Ok().json(serde_json::json!({
         "status": "accepted",
         "block_added": payload.block_index,
@@ -798,7 +605,7 @@ pub async fn register_miner(payload: web::Json<RegisterMiner>) -> impl Responder
 
 pub async fn mining_stats(data: web::Data<Mutex<MiningState>>) -> impl Responder {
     let state = data.lock().unwrap();
-    
+
     HttpResponse::Ok().json(serde_json::json!({
         "latest_block": state.latest_block.index,
         "latest_hash": state.latest_block.hash,
@@ -815,21 +622,21 @@ pub async fn mining_stats(data: web::Data<Mutex<MiningState>>) -> impl Responder
 
 pub async fn verify_bank(payload: web::Json<BankVerification>) -> impl Responder {
     let clean_iban = payload.iban
-        .replace(" ", "")
-        .replace("-", "")
-        .replace("_", "")
+        .replace(' ', "")
+        .replace('-', "")
+        .replace('_', "")
         .to_uppercase();
 
     let clean_swift = payload.swift
-        .replace(" ", "")
-        .replace("-", "")
+        .replace(' ', "")
+        .replace('-', "")
         .to_uppercase();
 
-    // Use ISO 7064 Modulo 97-10 validation
+    // ISO 7064 Modulo 97-10 check & SWIFT validation
     let iban_valid = validate_iban_checksum(&clean_iban);
     let swift_valid = validate_swift(&clean_swift);
 
-    // Find matching banks
+    // Matching bank search
     let matched_banks = find_banks(&clean_swift, &clean_iban);
 
     let verified = (iban_valid || clean_iban.len() >= 5) && swift_valid && !matched_banks.is_empty();
@@ -846,22 +653,22 @@ pub async fn verify_bank(payload: web::Json<BankVerification>) -> impl Responder
         format!("Multiple matches: {}", bank_names.join("; "))
     };
 
-    // Generate MT103 download URL if verified
-let download_url = if verified {
-    Some(generate_mt103_download_url(...))
-} else {
-    None
-};
-let download_url_display = download_url.clone().unwrap_or("N/A".to_string());
+    // MT103 URL Generation
+    let download_url = if verified {
+        Some(generate_mt103_download_url(&clean_iban, &clean_swift))
+    } else {
+        None
+    };
+
+    let download_url_str = download_url.as_deref().unwrap_or("N/A");
 
     let message = if verified {
         format!(
             "✅ Bank verified: {}. Settlement available via MT760/799 for {} {}. Manual download: {}",
-            bank_summary, payload.amount, payload.currency,
-            download_url.unwrap_or("N/A".to_string())
+            bank_summary, payload.amount, payload.currency, download_url_str
         )
     } else {
-        "Invalid IBAN or SWIFT. Use direct OTC settlement via MZQX chain.".to_string()
+        "Invalid IBAN or SWIFT format. Use direct OTC settlement via MZQX chain.".to_string()
     };
 
     HttpResponse::Ok().json(serde_json::json!({
@@ -882,7 +689,7 @@ let download_url_display = download_url.clone().unwrap_or("N/A".to_string());
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let mining_state = web::Data::new(Mutex::new(MiningState::new()));
-    
+
     let port = std::env::var("PORT")
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()

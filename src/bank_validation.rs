@@ -1,8 +1,7 @@
 /// Full Bank Validation Module — ISO 7064 Modulo 97-10 + SPP/FTP/MT103 Support
 use lazy_static::lazy_static;
-use std::collections::HashMap;
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 // ============================================
 // IBAN VALIDATION (ISO 7064 Modulo 97-10)
@@ -28,10 +27,8 @@ pub fn validate_iban_checksum(iban: &str) -> bool {
         return false;
     }
 
-    if is_standard {
-        if !bytes[2].is_ascii_digit() || !bytes[3].is_ascii_digit() {
-            return false;
-        }
+    if is_standard && (!bytes[2].is_ascii_digit() || !bytes[3].is_ascii_digit()) {
+        return false;
     }
 
     let rearranged_indices = (4..clean.len()).chain(0..4);
@@ -59,18 +56,19 @@ pub fn validate_iban_checksum(iban: &str) -> bool {
 }
 
 pub fn validate_swift(swift: &str) -> bool {
-    let clean = swift.replace(" ", "").replace("-", "").to_uppercase();
+    let clean = swift.replace(' ', "").replace('-', "").to_uppercase();
     if clean.len() != 8 && clean.len() != 11 {
         return false;
     }
-    clean.chars().all(|c| c.is_ascii_alphabetic())
+    // SWIFT/BIC codes can contain alphanumeric characters (e.g. MIDLGB22)
+    clean.chars().all(|c| c.is_ascii_alphanumeric())
 }
 
 // ============================================
 // BANK RECORD
 // ============================================
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct BankRecord {
     pub name: String,
     pub country: String,
@@ -94,7 +92,7 @@ lazy_static! {
         m.insert("HSBC".to_string(), BankRecord {
             name: "HSBC Bank PLC".to_string(),
             country: "United Kingdom".to_string(),
-            swift_codes: vec!["MIDLGB22".to_string(), "MIDLGB22XXX".to_string(), "HSBCHKHH".to_string(), "HSBCHIKHIKH".to_string()],
+            swift_codes: vec!["MIDLGB22".to_string(), "MIDLGB22XXX".to_string(), "HSBCHKHH".to_string()],
             iban_prefixes: vec!["GB".to_string(), "HK".to_string()],
             jurisdiction: "United Kingdom".to_string(),
             is_swift_net: true,
@@ -159,8 +157,8 @@ lazy_static! {
 // ============================================
 
 pub fn find_banks(swift: &str, iban: &str) -> Vec<BankRecord> {
-    let clean_swift = swift.replace(" ", "").replace("-", "").to_uppercase();
-    let clean_iban = iban.replace(" ", "").replace("-", "").replace("_", "").to_uppercase();
+    let clean_swift = swift.replace(' ', "").replace('-', "").to_uppercase();
+    let clean_iban = iban.replace(' ', "").replace('-', "").replace('_', "").to_uppercase();
 
     let mut matched: Vec<BankRecord> = Vec::new();
 
@@ -169,8 +167,8 @@ pub fn find_banks(swift: &str, iban: &str) -> Vec<BankRecord> {
         let mut matched_iban = false;
 
         for sw in &bank.swift_codes {
-            let sw_clean = sw.replace(" ", "").replace("-", "");
-            if clean_swift == sw_clean || clean_swift.starts_with(&sw_clean[0..8]) {
+            let sw_clean = sw.replace(' ', "").replace('-', "");
+            if clean_swift == sw_clean || (clean_swift.len() >= 8 && sw_clean.len() >= 8 && clean_swift[..8] == sw_clean[..8]) {
                 matched_swift = true;
                 break;
             }
