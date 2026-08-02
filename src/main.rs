@@ -1,4 +1,4 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+ï»¿use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use chrono::Utc;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -166,7 +166,7 @@ async fn explorer_home() -> impl Responder {
     </div>
 
     <div class="footer">
-        ?? MNZ Sovereign Network Infrastructure • Built with Rust & Actix-Web
+        ?? MNZ Sovereign Network Infrastructure ï¿½ Built with Rust & Actix-Web
     </div>
 </body>
 </html>"#;
