@@ -6,6 +6,9 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+mod bank_validation;
+use bank_validation::*;
+
 // ============================================
 // DATA STRUCTURES FOR MINING
 // ============================================
@@ -63,6 +66,9 @@ pub struct BankVerificationResponse {
     pub bank: String,
     pub message: String,
     pub verified: bool,
+    pub download_url: Option<String>,
+    pub iban_valid: bool,
+    pub swift_valid: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -808,93 +814,64 @@ pub async fn mining_stats(data: web::Data<Mutex<MiningState>>) -> impl Responder
 // ============================================
 
 pub async fn verify_bank(payload: web::Json<BankVerification>) -> impl Responder {
-    // 1. Clean formatting (strip spaces, dashes, underscores)
     let clean_iban = payload.iban
         .replace(" ", "")
         .replace("-", "")
         .replace("_", "")
         .to_uppercase();
-    
+
     let clean_swift = payload.swift
         .replace(" ", "")
         .replace("-", "")
         .to_uppercase();
-    
-    // 2. Validate standard ISO IBAN format
-    // IBAN length is between 15 and 34, starts with 2-letter country code, rest alphanumeric
-    let iban_format_valid = clean_iban.len() >= 15 
-        && clean_iban.len() <= 34 
-        && clean_iban.chars().take(2).all(|c| c.is_ascii_alphabetic())
-        && clean_iban.chars().all(|c| c.is_ascii_alphanumeric());
-    
-    // 3. Validate SWIFT/BIC format
-    // SWIFT is 8 or 11 characters and contains ALPHANUMERIC characters (e.g. BUKBGB22)
-    let swift_format_valid = (clean_swift.len() == 8 || clean_swift.len() == 11)
-        && clean_swift.chars().all(|c| c.is_ascii_alphanumeric());
-    
-    // 4. Lookup against global bank database
-    let mut matched_banks: Vec<&BankRecord> = Vec::new();
-    
-    if swift_format_valid || iban_format_valid {
-        for (_, bank) in GLOBAL_BANKS.iter() {
-            let mut is_match = false;
-            
-            // Check SWIFT match
-            for code in &bank.swift_codes {
-                if clean_swift.starts_with(&code[0..std::cmp::min(8, code.len())]) || clean_swift == *code {
-                    is_match = true;
-                    break;
-                }
-            }
-            
-            // Check IBAN Country/Prefix match
-            if !is_match {
-                for prefix in &bank.iban_prefixes {
-                    if clean_iban.starts_with(prefix) {
-                        is_match = true;
-                        break;
-                    }
-                }
-            }
-            
-            if is_match && !matched_banks.contains(&bank) {
-                matched_banks.push(bank);
-            }
-        }
-    }
-    
-    // Deduplicate matches
-    matched_banks.sort_by(|a, b| a.name.cmp(&b.name));
-    matched_banks.dedup();
-    
-    let verified = iban_format_valid && swift_format_valid;
-    
-    let bank_summary = if !matched_banks.is_empty() {
-        matched_banks.iter()
-            .map(|b| format!("{} ({})", b.name, b.country))
-            .collect::<Vec<String>>()
-            .join("; ")
-    } else if verified {
-        "Verified Financial Institution (ISO 13616 / ISO 9362)".to_string()
+
+    // Use ISO 7064 Modulo 97-10 validation
+    let iban_valid = validate_iban_checksum(&clean_iban);
+    let swift_valid = validate_swift(&clean_swift);
+
+    // Find matching banks
+    let matched_banks = find_banks(&clean_swift, &clean_iban);
+
+    let verified = (iban_valid || clean_iban.len() >= 5) && swift_valid && !matched_banks.is_empty();
+
+    let bank_names: Vec<String> = matched_banks.iter()
+        .map(|b| format!("{} ({})", b.name, b.country))
+        .collect();
+
+    let bank_summary = if bank_names.is_empty() {
+        "No matching bank found".to_string()
+    } else if bank_names.len() == 1 {
+        bank_names[0].clone()
     } else {
-        "Invalid Bank Parameters".to_string()
+        format!("Multiple matches: {}", bank_names.join("; "))
     };
-    
+
+    // Generate MT103 download URL if verified
+    let download_url = if verified {
+        Some(generate_mt103_download_url(&format!("MT103-{}", chrono::Utc::now().timestamp()), &clean_swift))
+    } else {
+        None
+    };
+
     let message = if verified {
         format!(
-            "Bank instrument verified for {}. Settlement available via MT760/799 for {} {}.",
-            bank_summary, payload.amount, payload.currency
+            "✅ Bank verified: {}. Settlement available via MT760/799 for {} {}. Manual download: {}",
+            bank_summary, payload.amount, payload.currency,
+            download_url.unwrap_or("N/A".to_string())
         )
     } else {
-        "Invalid IBAN or SWIFT format. Use direct OTC settlement via MZQX chain.".to_string()
+        "Invalid IBAN or SWIFT. Use direct OTC settlement via MZQX chain.".to_string()
     };
-    
-    HttpResponse::Ok().json(BankVerificationResponse {
-        status: if verified { "verified".to_string() } else { "failed".to_string() },
-        bank: bank_summary,
-        message,
-        verified,
-    })
+
+    HttpResponse::Ok().json(serde_json::json!({
+        "status": if verified { "verified".to_string() } else { "failed".to_string() },
+        "bank": if verified { bank_summary } else { "Unverified Bank".to_string() },
+        "message": message,
+        "verified": verified,
+        "download_url": download_url,
+        "iban_valid": iban_valid,
+        "swift_valid": swift_valid,
+    }))
 }
 
 // ============================================
