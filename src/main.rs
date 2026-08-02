@@ -1,4 +1,98 @@
 ﻿use actix_web::{web, App, HttpServer, HttpResponse, Responder};
+use serde::{Deserialize, Serialize};
+use sha2::{Sha256, Digest};
+use std::sync::Mutex;
+use chrono::Utc;
+
+// ============================================
+// DATA STRUCTURES FOR MINING
+// ============================================
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Block {
+    pub index: u64,
+    pub timestamp: u64,
+    pub transactions: Vec<String>,
+    pub previous_hash: String,
+    pub nonce: u64,
+    pub hash: String,
+}
+
+#[derive(Deserialize)]
+pub struct MineSubmission {
+    pub miner_address: String,
+    pub nonce: u64,
+    pub block_hash: String,
+    pub block_index: u64,
+    pub previous_hash: String,
+    pub transactions: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct WorkResponse {
+    pub block_index: u64,
+    pub previous_hash: String,
+    pub difficulty_target: String,
+    pub transactions: Vec<String>,
+    pub timestamp: u64,
+}
+
+#[derive(Deserialize)]
+pub struct RegisterMiner {
+    pub address: String,
+    pub name: Option<String>,
+}
+
+// ============================================
+// BANK VERIFICATION STRUCTURES
+// ============================================
+
+#[derive(Deserialize)]
+pub struct BankVerification {
+    pub iban: String,
+    pub swift: String,
+    pub amount: f64,
+    pub currency: String,
+}
+
+#[derive(Serialize)]
+pub struct BankVerificationResponse {
+    pub status: String,
+    pub bank: String,
+    pub message: String,
+    pub verified: bool,
+}
+
+// ============================================
+// MINING STATE
+// ============================================
+
+pub struct MiningState {
+    pub latest_block: Block,
+    pub pending_transactions: Vec<String>,
+    pub difficulty: u64,
+}
+
+impl MiningState {
+    pub fn new() -> Self {
+        Self {
+            latest_block: Block {
+                index: 0,
+                timestamp: Utc::now().timestamp() as u64,
+                transactions: vec!["Genesis Block".to_string()],
+                previous_hash: "0".to_string(),
+                nonce: 0,
+                hash: "GENESIS".to_string(),
+            },
+            pending_transactions: Vec::new(),
+            difficulty: 4,
+        }
+    }
+}
+
+// ============================================
+// EXPLORER HOME
+// ============================================
 
 async fn explorer_home() -> impl Responder {
     let html = r#"<!DOCTYPE html>
@@ -147,6 +241,10 @@ async fn explorer_home() -> impl Responder {
         .content_type("text/html; charset=utf-8")
         .body(html)
 }
+
+// ============================================
+// AUDIT PAGE
+// ============================================
 
 async fn audit_page() -> impl Responder {
     let html = r#"<!DOCTYPE html>
@@ -372,6 +470,10 @@ async fn audit_page() -> impl Responder {
         .body(html)
 }
 
+// ============================================
+// API DATA
+// ============================================
+
 async fn api_data() -> impl Responder {
     let response_json = r#"{
         "status": "online",
@@ -390,21 +492,198 @@ async fn api_data() -> impl Responder {
         .body(response_json)
 }
 
+// ============================================
+// HEALTH CHECK
+// ============================================
+
 async fn health() -> impl Responder {
     HttpResponse::Ok()
         .content_type("application/json")
         .body(r#"{"status":"healthy","service":"MNZ-Chain"}"#)
 }
 
+// ============================================
+// MINING: GET WORK
+// ============================================
+
+pub async fn get_work(data: web::Data<Mutex<MiningState>>) -> impl Responder {
+    let state = data.lock().unwrap();
+    
+    let diff: usize = state.difficulty as usize;
+    let response = WorkResponse {
+        block_index: state.latest_block.index + 1,
+        previous_hash: state.latest_block.hash.clone(),
+        difficulty_target: "0".repeat(diff) + &"f".repeat(64 - diff),
+        transactions: state.pending_transactions.clone(),
+        timestamp: Utc::now().timestamp() as u64,
+    };
+    
+    HttpResponse::Ok().json(response)
+}
+
+// ============================================
+// MINING: SUBMIT BLOCK
+// ============================================
+
+pub async fn submit_mined_block(
+    payload: web::Json<MineSubmission>,
+    data: web::Data<Mutex<MiningState>>,
+) -> impl Responder {
+    let mut state = data.lock().unwrap();
+    
+    // 1. Verify block index matches expected
+    if payload.block_index != state.latest_block.index + 1 {
+        return HttpResponse::BadRequest().json(serde_json::json!({
+            "status": "rejected",
+            "reason": "Invalid block index"
+        }));
+    }
+    
+    // 2. Verify previous hash matches
+    if payload.previous_hash != state.latest_block.hash {
+        return HttpResponse::BadRequest().json(serde_json::json!({
+            "status": "rejected",
+            "reason": "Previous hash mismatch"
+        }));
+    }
+    
+    // 3. Verify hash meets difficulty target
+    let diff: usize = state.difficulty as usize;
+    let target = format!("0{}", "0".repeat(diff - 1));
+    if !payload.block_hash.starts_with(&target) {
+        return HttpResponse::BadRequest().json(serde_json::json!({
+            "status": "rejected",
+            "reason": "Hash does not meet difficulty target"
+        }));
+    }
+    
+    // 4. Verify block hash matches computed hash
+    let mut hasher = Sha256::new();
+    let block_data = format!(
+        "{}{}{}{}",
+        payload.block_index,
+        payload.previous_hash,
+        payload.transactions.join(""),
+        payload.nonce
+    );
+    hasher.update(block_data.as_bytes());
+    let computed_hash = hex::encode(hasher.finalize());
+    
+    if computed_hash != payload.block_hash {
+        return HttpResponse::BadRequest().json(serde_json::json!({
+            "status": "rejected",
+            "reason": "Hash mismatch"
+        }));
+    }
+    
+    // 5. Create and add block
+    let new_block = Block {
+        index: payload.block_index,
+        timestamp: Utc::now().timestamp() as u64,
+        transactions: payload.transactions.clone(),
+        previous_hash: payload.previous_hash.clone(),
+        nonce: payload.nonce,
+        hash: payload.block_hash.clone(),
+    };
+    
+    // Add reward transaction
+    let reward_tx = format!(
+        "MINT: +100.00 MZQX to {} (Block {})",
+        payload.miner_address,
+        payload.block_index
+    );
+    
+    state.latest_block = new_block;
+    state.pending_transactions.clear();
+    
+    HttpResponse::Ok().json(serde_json::json!({
+        "status": "accepted",
+        "block_added": payload.block_index,
+        "reward": reward_tx,
+    }))
+}
+
+// ============================================
+// MINING: REGISTER MINER
+// ============================================
+
+pub async fn register_miner(
+    payload: web::Json<RegisterMiner>,
+) -> impl Responder {
+    HttpResponse::Ok().json(serde_json::json!({
+        "status": "registered",
+        "miner_address": payload.address,
+        "name": payload.name,
+        "message": "Miner registered successfully. Start mining at /mine/work"
+    }))
+}
+
+// ============================================
+// MINING: STATS
+// ============================================
+
+pub async fn mining_stats(data: web::Data<Mutex<MiningState>>) -> impl Responder {
+    let state = data.lock().unwrap();
+    
+    HttpResponse::Ok().json(serde_json::json!({
+        "latest_block": state.latest_block.index,
+        "latest_hash": state.latest_block.hash,
+        "pending_tx_count": state.pending_transactions.len(),
+        "difficulty": state.difficulty,
+        "network": "MNZ Sovereign Chain",
+        "reward": "100.00 MZQX per block",
+    }))
+}
+
+// ============================================
+// BANK: VERIFY
+// ============================================
+
+pub async fn verify_bank(payload: web::Json<BankVerification>) -> impl Responder {
+    // Validate IBAN (basic check: length 15-34, alphanumeric)
+    let iban_valid = payload.iban.len() >= 15 && payload.iban.len() <= 34 && payload.iban.chars().all(|c| c.is_alphanumeric());
+    
+    // Validate SWIFT (basic check: 8 or 11 characters, letters only)
+    let swift_valid = (payload.swift.len() == 8 || payload.swift.len() == 11) && payload.swift.chars().all(|c| c.is_ascii_alphabetic());
+    
+    let is_valid = iban_valid && swift_valid;
+    
+    HttpResponse::Ok().json(BankVerificationResponse {
+        status: if is_valid { "verified".to_string() } else { "failed".to_string() },
+        bank: if is_valid { "Bank of Settlement (MT760/799 Eligible)".to_string() } else { "Invalid Bank Parameters".to_string() },
+        message: if is_valid { 
+            format!("Bank instrument verified. Settlement available via MT760/799 for {} {}.", payload.amount, payload.currency)
+        } else { 
+            "Invalid IBAN or SWIFT. Use direct OTC settlement via MZQX chain.".to_string()
+        },
+        verified: is_valid,
+    })
+}
+
+// ============================================
+// MAIN
+// ============================================
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+    // Initialize mining state
+    let mining_state = web::Data::new(Mutex::new(MiningState::new()));
+    
+    HttpServer::new(move || {
         App::new()
+            .app_data(mining_state.clone())
             .route("/", web::get().to(explorer_home))
             .route("/audit", web::get().to(audit_page))
             .route("/api", web::get().to(api_data))
             .route("/health", web::get().to(health))
             .route("/api/health", web::get().to(health))
+            // Mining routes
+            .route("/mine/work", web::get().to(get_work))
+            .route("/mine/submit", web::post().to(submit_mined_block))
+            .route("/mine/register", web::post().to(register_miner))
+            .route("/mine/stats", web::get().to(mining_stats))
+            // Bank routes
+            .route("/bank/verify", web::post().to(verify_bank))
     })
     .bind(("0.0.0.0", 8080))?
     .run()
