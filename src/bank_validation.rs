@@ -1,200 +1,117 @@
-﻿/// Full Bank Validation Module — ISO 7064 Modulo 97-10 + SPP/FTP/MT103 Support
-use lazy_static::lazy_static;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+﻿use regex::Regex;
 
-// ============================================
-// IBAN VALIDATION (ISO 7064 Modulo 97-10)
-// ============================================
+#[derive(Debug, Clone)]
+pub struct BankInfo {
+    pub bic_prefix: &'static str,
+    pub country_code: &'static str,
+    pub name: &'static str,
+    pub country: &'static str,
+}
 
+pub static BANK_DATABASE: &[BankInfo] = &[
+    // --- BULGARIA ---
+    BankInfo { bic_prefix: "PIRB", country_code: "BG", name: "Piraeus Bank Bulgaria AD", country: "Bulgaria" },
+    BankInfo { bic_prefix: "UNCR", country_code: "BG", name: "UniCredit Bulbank", country: "Bulgaria" },
+    BankInfo { bic_prefix: "STSA", country_code: "BG", name: "DSK Bank AD", country: "Bulgaria" },
+    BankInfo { bic_prefix: "FINV", country_code: "BG", name: "First Investment Bank (Fibank)", country: "Bulgaria" },
+    BankInfo { bic_prefix: "UBBS", country_code: "BG", name: "United Bulgarian Bank (UBB)", country: "Bulgaria" },
+
+    // --- UNITED KINGDOM ---
+    BankInfo { bic_prefix: "MIDL", country_code: "GB", name: "HSBC Bank PLC", country: "United Kingdom" },
+    BankInfo { bic_prefix: "BARC", country_code: "GB", name: "Barclays Bank PLC", country: "United Kingdom" },
+    BankInfo { bic_prefix: "NWBK", country_code: "GB", name: "National Westminster Bank PLC", country: "United Kingdom" },
+    BankInfo { bic_prefix: "LOYD", country_code: "GB", name: "Lloyds Bank PLC", country: "United Kingdom" },
+    BankInfo { bic_prefix: "SCBL", country_code: "GB", name: "Standard Chartered Bank", country: "United Kingdom" },
+
+    // --- GERMANY ---
+    BankInfo { bic_prefix: "DEUT", country_code: "DE", name: "Deutsche Bank AG", country: "Germany" },
+    BankInfo { bic_prefix: "COBA", country_code: "DE", name: "Commerzbank AG", country: "Germany" },
+    BankInfo { bic_prefix: "BYLA", country_code: "DE", name: "BayernLB", country: "Germany" },
+
+    // --- FRANCE ---
+    BankInfo { bic_prefix: "BNPA", country_code: "FR", name: "BNP Paribas", country: "France" },
+    BankInfo { bic_prefix: "CRLY", country_code: "FR", name: "Crédit Lyonnais (LCL)", country: "France" },
+    BankInfo { bic_prefix: "SOGE", country_code: "FR", name: "Société Générale", country: "France" },
+
+    // --- UNITED STATES ---
+    BankInfo { bic_prefix: "CHAS", country_code: "US", name: "JPMorgan Chase Bank N.A.", country: "United States" },
+    BankInfo { bic_prefix: "CITI", country_code: "US", name: "Citibank N.A.", country: "United States" },
+    BankInfo { bic_prefix: "BOFA", country_code: "US", name: "Bank of America N.A.", country: "United States" },
+
+    // --- SWITZERLAND ---
+    BankInfo { bic_prefix: "UBSW", country_code: "CH", name: "UBS AG", country: "Switzerland" },
+    BankInfo { bic_prefix: "CRES", country_code: "CH", name: "Credit Suisse", country: "Switzerland" },
+
+    // --- SPAIN & ITALY ---
+    BankInfo { bic_prefix: "BSCH", country_code: "ES", name: "Banco Santander S.A.", country: "Spain" },
+    BankInfo { bic_prefix: "BBVA", country_code: "ES", name: "Banco Bilbao Vizcaya Argentaria", country: "Spain" },
+    BankInfo { bic_prefix: "ISPX", country_code: "IT", name: "Intesa Sanpaolo S.p.A.", country: "Italy" },
+
+    // --- ASIA / UAE ---
+    BankInfo { bic_prefix: "DBSS", country_code: "SG", name: "DBS Bank Ltd", country: "Singapore" },
+    BankInfo { bic_prefix: "EBIL", country_code: "AE", name: "Emirates NBD Bank PJSC", country: "United Arab Emirates" },
+    BankInfo { bic_prefix: "FABI", country_code: "AE", name: "First Abu Dhabi Bank", country: "United Arab Emirates" },
+];
+
+/// Validates SWIFT/BIC syntax structure (8 or 11 alphanumeric characters)
+pub fn validate_swift(swift: &str) -> bool {
+    let re = Regex::new(r"^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$").unwrap();
+    re.is_match(swift)
+}
+
+/// MOD-97 IBAN Checksum Validator (ISO 7064)
 pub fn validate_iban_checksum(iban: &str) -> bool {
-    let clean: String = iban
-        .chars()
-        .filter(|c| !c.is_whitespace() && *c != '-' && *c != '_')
-        .collect::<String>()
-        .to_uppercase();
-
-    let is_legacy = clean.len() >= 5 && clean.len() <= 14;
-    let is_standard = clean.len() >= 15 && clean.len() <= 34;
-
-    if !is_standard && !is_legacy {
+    if iban.len() < 5 || iban.len() > 34 {
         return false;
     }
 
-    let bytes = clean.as_bytes();
+    let rearranged = format!("{}{}", &iban[4..], &iban[..4]);
+    let mut numeric_str = String::new();
 
-    if !bytes[0].is_ascii_alphabetic() || !bytes[1].is_ascii_alphabetic() {
-        return false;
-    }
-
-    if is_standard && (!bytes[2].is_ascii_digit() || !bytes[3].is_ascii_digit()) {
-        return false;
-    }
-
-    let rearranged_indices = (4..clean.len()).chain(0..4);
-    let mut remainder: u32 = 0;
-
-    for idx in rearranged_indices {
-        let ch = bytes[idx] as char;
-        match ch {
-            '0'..='9' => {
-                let digit = (ch as u32) - ('0' as u32);
-                remainder = (remainder * 10 + digit) % 97;
-            }
-            'A'..='Z' => {
-                let val = (ch as u32) - ('A' as u32) + 10;
-                let tens = val / 10;
-                let ones = val % 10;
-                remainder = (remainder * 10 + tens) % 97;
-                remainder = (remainder * 10 + ones) % 97;
-            }
-            _ => return false,
+    for ch in rearranged.chars() {
+        if ch.is_ascii_digit() {
+            numeric_str.push(ch);
+        } else if ch.is_ascii_uppercase() {
+            let num = (ch as u32) - ('A' as u32) + 10;
+            numeric_str.push_str(&num.to_string());
+        } else {
+            return false;
         }
+    }
+
+    let mut remainder: u32 = 0;
+    for chunk in numeric_str.as_bytes() {
+        let digit = (chunk - b'0') as u32;
+        remainder = (remainder * 10 + digit) % 97;
     }
 
     remainder == 1
 }
 
-pub fn validate_swift(swift: &str) -> bool {
-    let clean = swift.replace(' ', "").replace('-', "").to_uppercase();
-    if clean.len() != 8 && clean.len() != 11 {
-        return false;
-    }
-    clean.chars().all(|c| c.is_ascii_alphanumeric())
+/// Matches SWIFT/IBAN against registered bank dictionary entries
+pub fn find_banks(swift: &str, iban: &str) -> Vec<&'static BankInfo> {
+    let clean_swift = swift.to_uppercase();
+    let clean_iban = iban.to_uppercase();
+
+    let swift_prefix = if clean_swift.len() >= 4 { &clean_swift[..4] } else { "" };
+    let iban_country = if clean_iban.len() >= 2 { &clean_iban[..2] } else { "" };
+
+    BANK_DATABASE
+        .iter()
+        .filter(|b| {
+            let swift_match = !swift_prefix.is_empty() && b.bic_prefix == swift_prefix;
+            let country_match = !iban_country.is_empty() && b.country_code == iban_country;
+            swift_match || (country_match && clean_swift.contains(b.bic_prefix))
+        })
+        .collect()
 }
 
-// ============================================
-// BANK RECORD
-// ============================================
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct BankRecord {
-    pub name: String,
-    pub country: String,
-    pub swift_codes: Vec<String>,
-    pub iban_prefixes: Vec<String>,
-    pub jurisdiction: String,
-    pub is_swift_net: bool,
-    pub supports_spp: bool,
-    pub supports_ftp: bool,
-}
-
-// ============================================
-// GLOBAL BANK DATABASE
-// ============================================
-
-lazy_static! {
-    pub static ref GLOBAL_BANKS: HashMap<String, BankRecord> = {
-        let mut m = HashMap::new();
-
-        // HSBC
-        m.insert("HSBC".to_string(), BankRecord {
-            name: "HSBC Bank PLC".to_string(),
-            country: "United Kingdom".to_string(),
-            swift_codes: vec!["MIDLGB22".to_string(), "MIDLGB22XXX".to_string(), "HSBCHKHH".to_string()],
-            iban_prefixes: vec!["GB".to_string(), "HK".to_string()],
-            jurisdiction: "United Kingdom".to_string(),
-            is_swift_net: true,
-            supports_spp: true,
-            supports_ftp: true,
-        });
-
-        // Deutsche
-        m.insert("DEUTSCHE".to_string(), BankRecord {
-            name: "Deutsche Bank AG".to_string(),
-            country: "Germany".to_string(),
-            swift_codes: vec!["DEUTDEFF".to_string(), "DEUTDEFFXXX".to_string(), "DEUTHKHH".to_string()],
-            iban_prefixes: vec!["DE".to_string(), "HK".to_string()],
-            jurisdiction: "Germany".to_string(),
-            is_swift_net: true,
-            supports_spp: true,
-            supports_ftp: true,
-        });
-
-        // UBS
-        m.insert("UBS".to_string(), BankRecord {
-            name: "UBS AG".to_string(),
-            country: "Switzerland".to_string(),
-            swift_codes: vec!["UBSWCHZH80A".to_string(), "UBSWCHZH".to_string()],
-            iban_prefixes: vec!["CH".to_string()],
-            jurisdiction: "Switzerland".to_string(),
-            is_swift_net: true,
-            supports_spp: true,
-            supports_ftp: true,
-        });
-
-        // Barclays
-        m.insert("BARCLAYS".to_string(), BankRecord {
-            name: "Barclays Bank PLC".to_string(),
-            country: "United Kingdom".to_string(),
-            swift_codes: vec!["BARCGB22".to_string(), "BARCGB22XXX".to_string()],
-            iban_prefixes: vec!["GB".to_string()],
-            jurisdiction: "United Kingdom".to_string(),
-            is_swift_net: true,
-            supports_spp: true,
-            supports_ftp: true,
-        });
-
-        // JPMorgan
-        m.insert("JPMORGAN".to_string(), BankRecord {
-            name: "JPMorgan Chase Bank NA".to_string(),
-            country: "United States".to_string(),
-            swift_codes: vec!["CHASUS33".to_string(), "CHASUS33XXX".to_string()],
-            iban_prefixes: vec!["US".to_string()],
-            jurisdiction: "United States".to_string(),
-            is_swift_net: true,
-            supports_spp: true,
-            supports_ftp: false,
-        });
-
-        m
-    };
-}
-
-// ============================================
-// FIND BANKS
-// ============================================
-
-pub fn find_banks(swift: &str, iban: &str) -> Vec<BankRecord> {
-    let clean_swift = swift.replace(' ', "").replace('-', "").to_uppercase();
-    let clean_iban = iban.replace(' ', "").replace('-', "").replace('_', "").to_uppercase();
-
-    let mut matched: Vec<BankRecord> = Vec::new();
-
-    for (_, bank) in GLOBAL_BANKS.iter() {
-        let mut matched_swift = false;
-        let mut matched_iban = false;
-
-        for sw in &bank.swift_codes {
-            let sw_clean = sw.replace(' ', "").replace('-', "");
-            if clean_swift == sw_clean || (clean_swift.len() >= 8 && sw_clean.len() >= 8 && clean_swift[..8] == sw_clean[..8]) {
-                matched_swift = true;
-                break;
-            }
-        }
-
-        for prefix in &bank.iban_prefixes {
-            if clean_iban.starts_with(prefix) {
-                matched_iban = true;
-                break;
-            }
-        }
-
-        if matched_swift || matched_iban {
-            matched.push(bank.clone());
-        }
-    }
-
-    matched.sort_by(|a, b| a.name.cmp(&b.name));
-    matched.dedup_by(|a, b| a.name == b.name);
-    matched
-}
-
-// ============================================
-// GENERATE MT103 DOWNLOAD URL
-// ============================================
-
-pub fn generate_mt103_download_url(transaction_ref: &str, bank_swift: &str) -> String {
-    let hash = format!("{:x}", md5::compute(format!("{}{}", transaction_ref, bank_swift)));
-    format!("/mt103/download/{}", hash)
+/// Generates a unique 32-character SHA256 identifier for MT103 downloads
+pub fn generate_mt103_download_url(iban: &str, swift: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let input = format!("{}:{}", iban, swift);
+    let mut hasher = Sha256::new();
+    hasher.update(input.as_bytes());
+    let hash = format!("{:x}", hasher.finalize());
+    format!("/mt103/download/{}", &hash[..32])
 }
