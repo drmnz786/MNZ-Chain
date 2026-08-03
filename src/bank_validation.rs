@@ -213,8 +213,8 @@ mod tests {
     #[test]
     fn test_validate_iban_checksum() {
         assert!(validate_iban_checksum("BG50PIRB80501606353420")); // Valid Bulgarian IBAN
-        assert!(validate_iban_checksum("GB74MIDL40051512345678")); // Valid UK IBAN (GB74)
-        assert!(!validate_iban_checksum("GB33MIDL40051512345678")); // Invalid Checksum (33 instead of 74)
+        assert!(validate_iban_checksum("GB15MIDL40051512345678")); // Valid UK IBAN (GB15)
+        assert!(!validate_iban_checksum("GB33MIDL40051512345678")); // Invalid Checksum
     }
 
     #[test]
