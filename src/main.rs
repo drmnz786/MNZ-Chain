@@ -33,7 +33,7 @@ pub fn parse_mt103_amount(mt103: &str) -> Option<(String, f64, String)> {
 }
 
 // ============================================
-// DATA STRUCTURES FOR MINING
+// DATA STRUCTURES FOR MINING & VERIFICATION
 // ============================================
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -71,10 +71,6 @@ pub struct RegisterMiner {
     pub name: Option<String>,
 }
 
-// ============================================
-// DYNAMIC BANK VERIFICATION STRUCTURES
-// ============================================
-
 #[derive(Deserialize)]
 pub struct BankVerification {
     pub iban: String,
@@ -85,6 +81,16 @@ pub struct BankVerification {
     pub currency: Option<String>,
     #[serde(default)]
     pub mt103_raw: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct Mt103DownloadParams {
+    #[serde(default)]
+    pub amount: Option<f64>,
+    #[serde(default)]
+    pub currency: Option<String>,
+    #[serde(default)]
+    pub date: Option<String>,
 }
 
 // ============================================
@@ -292,18 +298,21 @@ pub async fn verify_bank(payload: web::Json<BankVerification>) -> impl Responder
         None => (None, None, None),
     };
 
-    // Fall back to extracted MT103 values if explicit amount wasn't passed in JSON
     let final_amount = payload.amount.or(extracted_amt);
     let final_currency = payload.currency.clone().or_else(|| extracted_curr.clone());
 
-    // Compare submitted amount vs extracted amount (if user passed an amount)
     let amount_matches = match (payload.amount, extracted_amt) {
         (Some(submitted), Some(extracted)) => Some((submitted - extracted).abs() < 0.01),
         _ => None,
     };
 
     let download_url = if verified {
-        Some(generate_mt103_download_url(&clean_iban, &clean_swift))
+        let base_url = generate_mt103_download_url(&clean_iban, &clean_swift);
+        let amt_param = final_amount.map(|a| format!("&amount={:.2}", a)).unwrap_or_default();
+        let curr_param = final_currency.as_ref().map(|c| format!("&currency={}", c)).unwrap_or_default();
+        let date_param = value_date.as_ref().map(|d| format!("&date={}", d)).unwrap_or_default();
+        
+        Some(format!("{base_url}?v=1{amt_param}{curr_param}{date_param}"))
     } else {
         None
     };
@@ -327,11 +336,22 @@ pub async fn verify_bank(payload: web::Json<BankVerification>) -> impl Responder
 }
 
 // ============================================
-// MT103 DOCUMENT DOWNLOAD ENDPOINT
+// DYNAMIC MT103 DOCUMENT DOWNLOAD ENDPOINT
 // ============================================
 
-pub async fn download_mt103(path: web::Path<String>) -> impl Responder {
+pub async fn download_mt103(
+    path: web::Path<String>,
+    query: web::Query<Mt103DownloadParams>,
+) -> impl Responder {
     let hash = path.into_inner();
+
+    let amount = query.amount.unwrap_or(19777000.00);
+    let currency = query.currency.as_deref().unwrap_or("EUR");
+    let date = query.date.as_deref().unwrap_or("190221");
+
+    // Format amount into SWIFT standard decimal comma format (e.g., 987654.32 -> 987654,32)
+    let formatted_amount = format!("{:.2}", amount).replace('.', ",");
+    let field_32a = format!(":32A:{}{}{}", date, currency, formatted_amount);
 
     let mt103_document = format!(
         "{{1:F01HSBCGB22AXXX0000000000}}\n\
@@ -340,7 +360,7 @@ pub async fn download_mt103(path: web::Path<String>) -> impl Responder {
          {{4:\n\
          :20:{}\n\
          :23B:CRED\n\
-         :32A:190221EUR19777000,00\n\
+         {}\n\
          :50K:/1234567890\n\
          HSBC BANK PLC\n\
          LONDON, UNITED KINGDOM\n\
@@ -349,7 +369,8 @@ pub async fn download_mt103(path: web::Path<String>) -> impl Responder {
          :71A:OUR\n\
          -}}",
         &hash[..std::cmp::min(12, hash.len())],
-        hash
+        hash,
+        field_32a
     );
 
     HttpResponse::Ok()
